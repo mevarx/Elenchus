@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "elenchus"
+version = "0.1.0"
+description = "Elenchus — the cross-examination. The model is the suspect: local bill/receipt audit where deterministic code checks the model's own arithmetic."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[project.scripts]
+elenchus = "elenchus.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["elenchus*"]

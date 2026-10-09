@@ -1,0 +1,49 @@
+{
+  "line_items": [
+    {
+      "description": "Consumer No.",
+      "amount_inr": 0
+    },
+    {
+      "description": "Name",
+      "amount_inr": 0
+    },
+    {
+      "description": "Address",
+      "amount_inr": 0
+    },
+    {
+      "description": "Reading Date",
+      "amount_inr": 0
+    },
+    {
+      "description": "Units Consumed",
+      "amount_inr": 214
+    },
+    {
+      "description": "Rate Slab",
+      "amount_inr": 0
+    },
+    {
+      "description": "Energy Charges",
+      "amount_inr": 1463.1
+    },
+    {
+      "description": "Fixed Charge",
+      "amount_inr": 128.0
+    },
+    {
+      "description": "Duty (Electricity Duty 16%)",
+      "amount_inr": 254.58
+    },
+    {
+      "description": "Due Date",
+      "amount_inr": 0
+    },
+    {
+      "description": "Penalty if late",
+      "amount_inr": 50
+    }
+  ],
+  "stated_total_inr": 1895.78
+}
