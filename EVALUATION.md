@@ -2,9 +2,9 @@
 
 18 bill-model evaluations. Ground truth is planted by the generator; every number below is measured, not asserted.
 
-| model | bills | extraction ✓ | median s | item P | item R | total acc | adj. recall | adj. recall (any) | adj. FP |
-|---|---|---|---|---|---|---|---|---|---|
-| gemma3:4b | 18 | 100% | 3.7 | 94% | 88% | 89% | 100% | 100% | 0% |
+| model | bills | extraction ✓ | median s | item P | item R | total acc | adj. recall | adj. recall (any) | adj. FP | caught model err |
+|---|---|---|---|---|---|---|---|---|---|---|
+| gemma3:4b | 18 | 100% | 2.9 | 94% | 88% | 100% | 100% | 100% | 0% | 1 |
 
 ## Adjudicator recall by defect class
 
@@ -19,4 +19,5 @@
 - **total acc** — stated total matches the printed total
 - **adj. recall** — of bills with a planted defect, the fraction flagged CRITICAL (not reconciled)
 - **adj. recall (any)** — the fraction with ANY finding, including paise-level INFO. A ₹0.10 mis-addition is reported as INFO on purpose — crying wolf on ten paise is bad adjudicator behaviour — so the two columns differ by exactly the paise-class defects.
-- **adj. FP** — of clean bills, the fraction falsely flagged (lower is better; a high value means the adjudicator cries wolf)
+- **adj. FP** — of clean bills the MODEL READ FAITHFULLY, the fraction falsely flagged. Flags on clean bills the model MISREAD are not FPs — they are correct behavior, counted separately as 'caught model err'.
+- **caught model err** — clean bills where the model itself misread the printout and the adjudicator correctly flagged the resulting disagreement

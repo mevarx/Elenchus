@@ -1,0 +1,41 @@
+{
+  "line_items": [
+    {
+      "description": "\u090a\u0930\u094d\u091c\u093e \u0936\u0941\u0932\u094d\u0915",
+      "amount_inr": 2522.0,
+      "is_charge": true
+    },
+    {
+      "description": "\u0935\u093e\u092a\u0930\u0932\u0947\u0932\u094d\u092f\u093e \u090f\u0915\u0915\u0947",
+      "amount_inr": 388.0,
+      "is_charge": false
+    },
+    {
+      "description": "\u0938\u094d\u0932\u0945\u092c \u0926\u0930",
+      "amount_inr": 0.0,
+      "is_charge": false
+    },
+    {
+      "description": "\u0935\u093e\u091a\u0928 \u0924\u093e\u0930\u0940\u0916",
+      "amount_inr": 0.0,
+      "is_charge": false
+    },
+    {
+      "description": "\u0938\u094d\u0925\u093f\u0930 \u0936\u0941\u0932\u094d\u0915",
+      "amount_inr": 95.0,
+      "is_charge": true
+    },
+    {
+      "description": "\u0935\u0940\u091c \u0915\u0930 (16%)",
+      "amount_inr": 418.72,
+      "is_charge": true
+    }
+  ],
+  "stated_total_inr": 3035.72,
+  "true_total_inr": 3035.72,
+  "defect": "METADATA_IN_ITEMS",
+  "language": "mr",
+  "notes": [
+    "3 metadata rows planted among the charge rows, one carrying the units value as its amount"
+  ]
+}

@@ -29,7 +29,16 @@ the measurement harness that proves the checks work.
 
 ## Measured results (this machine, gemma3:4b + qwen2.5vl:3b, temp=0)
 
-**Adjudication: 100% recall on all 5 defect classes, 0% false positives, 18/18 bills.**
+**Adjudication: 100% recall on all 5 defect classes, 0% false positives.**
+
+| run | bills | extraction ✓ | item P | item R | total acc | recall | FP | caught model err |
+|---|---|---|---|---|---|---|---|---|
+| English, 3/cell | 18 | 100% | 94% | 88% | 100% | 100% | 0% | 1 |
+| en + hi + mr, 2/cell | 36 | 100% | 94% | 95% | 100% | 100% | 0% | 1 |
+
+"caught model err" = a clean bill the MODEL misread (one digit: 1080.25 →
+1808.25) where the adjudicator correctly flagged the resulting
+disagreement — correct behavior, not a false positive.
 
 | defect class | adjudicator recall |
 |---|---|
@@ -38,7 +47,20 @@ the measurement harness that proves the checks work.
 | MISSING_ITEM (total includes dropped row) | 100% |
 | METADATA_IN_ITEMS (units value as a charge) | 100% |
 | EMPTY_WITH_TOTAL (confident total, no items) | 100% |
-| clean bills falsely flagged | 0% |
+
+**The measurement found its own holes first.** The first run scored 47%
+recall. The harness exposed two generator bugs (zero-amount metadata rows
+were trivially skippable; recomputed totals were undetectable by
+construction) and two metric bugs (description-only matching marked a
+misread amount as faithful; a ₹0.10 planted defect demanded CRITICAL when
+the adjudicator deliberately reports paise differences as INFO). Fixing
+all four took it to 100% — the same discipline the tool applies to the
+model, applied to the tool itself.
+
+**Multilingual works.** Devanagari bills render through uharfbuzz shaping
+(verified: stock Pillow has no raqm, so plain text produces disconnected
+conjuncts that degrade VLM reading). Hindi and Marathi extraction runs at
+the same recall as English.
 
 **Cross-model disagreement concentrates exactly on fabrication.**
 gemma3:4b vs qwen2.5vl:3b on 18 bills: 14 agree, and **all 4 disagreements
@@ -120,6 +142,7 @@ python -m elenchus calibrate corpus/en-none-0.png    # degradation study
 elenchus/
   adjudicator.py   9 deterministic checks, zero model calls (the product)
   generator.py     synthetic bills, planted defects, ground-truth sidecars
+  shaping.py       Devanagari complex-script rendering (uharfbuzz + freetype)
   evaluate.py      the measurement harness
   compare.py       cross-model disagreement
   calibrate.py     abstention vs fabrication under degradation

@@ -25,6 +25,8 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
+from .shaping import TextRenderer
+
 # ---------------------------------------------------------------- fonts
 
 FONT_CANDIDATES = {
@@ -192,7 +194,12 @@ def generate_bill(image_path: str, spec: BillSpec) -> GroundTruth:
 
     # --- plant the defect ------------------------------------------
     if spec.defect == "MISADDED_TOTAL":
-        stated = round(true_total + rng.choice([0.10, 50.10, 213.90, -18.75]), 2)
+        # Deltas are all unambiguously above the adjudicator's paise
+        # tolerance (₹1.00). A ₹0.10 mis-addition is a real MODEL behavior
+        # (see fixtures/ and the README) but the adjudicator deliberately
+        # reports it as INFO, not CRITICAL — planting it here and demanding
+        # CRITICAL would test the tolerance, not the check.
+        stated = round(true_total + rng.choice([50.10, 213.90, -18.75, 986.00]), 2)
         notes.append(f"stated total altered by {stated - true_total:+.2f}")
     elif spec.defect == "WRONG_TAX":
         # The realistic, catchable version: the printed duty LABEL claims
@@ -246,10 +253,17 @@ def generate_bill(image_path: str, spec: BillSpec) -> GroundTruth:
 
 def _render(image_path: str, labels: dict, script: str, spec: BillSpec,
             items: list, stated: float, units: int, rng) -> None:
-    """Draw the bill. Clean, high-contrast, VLM-readable."""
+    """Draw the bill. Clean, high-contrast, VLM-readable.
+
+    Devanagari labels are rendered through uharfbuzz shaping (verified
+    on this machine: stock Pillow has no raqm, so plain draw.text
+    produces disconnected conjuncts that degrade VLM reading).
+    """
     W, H = 1000, 760
     img = Image.new("RGB", (W, H), "white")
     d = ImageDraw.Draw(img)
+    tr = TextRenderer(img, d)
+
     f_title = get_font(script, 34)
     f_head = get_font(script, 19)
     f_body = get_font(script, 18)
@@ -260,8 +274,21 @@ def _render(image_path: str, labels: dict, script: str, spec: BillSpec,
     muted = (90, 90, 90)
     line = (180, 180, 180)
 
+    def T(pos, s, size, color=ink, bold=False, fnt=None):
+        if fnt is not None:
+            d.text(pos, s, font=fnt, fill=color)
+        else:
+            tr.text(pos, s, size, color, bold)
+
+    def TR(right_x, y, s, size, color=ink, bold=False, fnt=None):
+        if fnt is not None:
+            w = d.textlength(s, font=fnt)
+            d.text((right_x - w, y), s, font=fnt, fill=color)
+        else:
+            tr.text_right(right_x, y, s, size, color, bold)
+
     y = 30
-    d.text((40, y), labels["title"], font=f_title, fill=ink)
+    T((40, y), labels["title"], 34, fnt=f_title)
     y += 60
     d.line([(40, y), (W - 40, y)], fill=line, width=2)
     y += 18
@@ -278,30 +305,29 @@ def _render(image_path: str, labels: dict, script: str, spec: BillSpec,
         (labels["units"], str(units)),
     ]
     for k, v in meta:
-        d.text((40, y), k, font=f_body, fill=muted)
-        d.text((330, y), str(v), font=f_body, fill=ink)
+        T((40, y), k, 18, muted, fnt=f_body)
+        TR(330, y, str(v), 18, ink, fnt=f_body)
         y += 28
     y += 12
 
     # line-item table
-    d.text((40, y), "DESCRIPTION", font=f_small, fill=muted)
-    d.text((760, y), "AMOUNT (INR)", font=f_small, fill=muted)
+    T((40, y), "DESCRIPTION" if script == "en" else "विवरण", 15, muted, fnt=f_small)
+    TR(W - 40, y, "AMOUNT (INR)" if script == "en" else "राशि (INR)", 15, muted, fnt=f_small)
     y += 22
     d.line([(40, y), (W - 40, y)], fill=line, width=1)
     y += 14
     for it in items:
-        d.text((40, y), str(it.description), font=f_body, fill=ink)
-        d.text((760, y), f"{it.amount_inr:,.2f}", font=f_body, fill=ink)
+        T((40, y), str(it.description), 18, fnt=f_body)
+        TR(W - 40, y, f"{it.amount_inr:,.2f}", 18, fnt=f_body)
         y += 30
     y += 8
     d.line([(40, y), (W - 40, y)], fill=line, width=1)
     y += 16
 
-    d.text((40, y), labels["total"], font=f_total, fill=ink)
-    d.text((720, y), f"{stated:,.2f}" if stated is not None else "",
-           font=f_total, fill=ink)
+    T((40, y), labels["total"], 24, fnt=f_total)
+    TR(W - 40, y, f"{stated:,.2f}" if stated is not None else "", 24, fnt=f_total)
     y += 44
-    d.text((40, y), f"{labels['due']}: 2026-10-20", font=f_body, fill=muted)
+    T((40, y), f"{labels['due']}: 2026-10-20", 18, muted, fnt=f_body)
 
     img.save(image_path, format="PNG")
 

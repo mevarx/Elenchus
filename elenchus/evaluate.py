@@ -89,6 +89,7 @@ class CellResult:
     truth_stated: float | None = None
     adjudicator_flagged: bool = False
     adjudicator_any_finding: bool = False
+    model_faithful: bool = False
     truth_is_defect: bool = False
     notes: list = field(default_factory=list)
 
@@ -143,8 +144,37 @@ def evaluate_cell(model: str, image_path: str, truth: dict,
     v = adjudicate(Extraction.from_dict(pred))
     r.adjudicator_flagged = not v.reconciled
     r.adjudicator_any_finding = len(v.findings) > 0
+    # Was the MODEL faithful? Compare the extraction to the printed truth
+    # EXACTLY — every item's amount must match within paise tolerance and
+    # the stated total must match. A misread amount (measured: 1080.25 ->
+    # 1808.25, one digit) is an unfaithful extraction even though the
+    # description matched, and an adjudicator flag on it is CORRECT
+    # behavior. (The fuzzy item matcher above matches on description
+    # alone, which would wrongly mark such a misread as faithful.)
+    r.model_faithful = _extraction_faithful(pred, truth)
     r.notes.extend(f.code for f in v.findings if f.severity == "critical")
     return r
+
+
+def _extraction_faithful(pred: dict, truth: dict) -> bool:
+    """Did the model reproduce the printed bill exactly?"""
+    truth_items = truth.get("line_items", [])
+    pred_items = pred.get("line_items", []) or []
+    if len(pred_items) != len(truth_items):
+        return False
+    truth_by_desc = {str(i["description"]).strip().lower(): i["amount_inr"]
+                     for i in truth_items}
+    for p in pred_items:
+        key = str(p.get("description", "")).strip().lower()
+        if key not in truth_by_desc:
+            return False
+        if abs(float(p.get("amount_inr", 0)) - truth_by_desc[key]) > AMOUNT_TOL:
+            return False
+    if (pred.get("stated_total_inr") is not None
+            and truth.get("stated_total_inr") is not None):
+        if abs(pred["stated_total_inr"] - truth["stated_total_inr"]) > AMOUNT_TOL:
+            return False
+    return True
 
 
 def run_evaluation(models: list, corpus_dir: str, per_cell: int,
@@ -181,6 +211,7 @@ def run_evaluation(models: list, corpus_dir: str, per_cell: int,
             print(f"  ! model {model} not pulled — skipping")
             continue
         print(f"[2/4] evaluating {model} over {len(truth_files)} bills…")
+        n_err = 0
         for tf in truth_files:
             truth = json.loads(tf.read_text(encoding="utf-8"))
             img = str(tf).replace(".truth.json", ".png")
@@ -188,12 +219,21 @@ def run_evaluation(models: list, corpus_dir: str, per_cell: int,
                 continue
             r = evaluate_cell(model, img, truth)
             results.append(r)
-            mark = "OK " if r.extraction_ok else "ERR"
+            if not r.extraction_ok:
+                n_err += 1
+                print(f"    ERR {r.image:<42} {r.notes[0] if r.notes else 'extraction failed'}")
+                if n_err == 1 and not ollama_available():
+                    print("    ! ollama became unreachable — aborting this model")
+                    break
+                continue
+            mark = "OK "
             print(f"    {mark} {r.image:<42} "
                   f"items {r.items_tp}/{r.items_truth} "
                   f"total={'✓' if r.total_correct else '✗'} "
                   f"flagged={'✓' if r.adjudicator_flagged else '✗'} "
                   f"{r.seconds:.1f}s")
+        if n_err == len([t for t in truth_files]):
+            print(f"  ! every extraction failed for {model} — is ollama running?")
 
     # 3. aggregate
     print("[3/4] aggregating")
@@ -219,7 +259,7 @@ def aggregate(results: list) -> dict:
             "items_tp": 0, "items_truth": 0, "items_pred": 0,
             "total_correct": 0, "total_known": 0,
             "defect_bills": 0, "defect_flagged": 0, "defect_any": 0,
-            "clean_bills": 0, "clean_flagged": 0,
+            "clean_bills": 0, "clean_flagged": 0, "caught_model_error": 0,
             "by_defect": {},
         })
         m["n"] += 1
@@ -241,7 +281,13 @@ def aggregate(results: list) -> dict:
             byd["flagged"] += int(r.adjudicator_flagged)
         else:
             m["clean_bills"] += 1
-            m["clean_flagged"] += int(r.adjudicator_flagged)
+            # an adjudicator flag on a CLEAN bill is a false positive ONLY
+            # when the model extracted faithfully — if the model misread
+            # the bill, the flag is correct behavior (a real disagreement)
+            if r.model_faithful:
+                m["clean_flagged"] += int(r.adjudicator_flagged)
+            elif r.adjudicator_flagged:
+                m["caught_model_error"] += 1
 
     out = {}
     for model, m in by_model.items():
@@ -262,6 +308,9 @@ def aggregate(results: list) -> dict:
                                         if m["defect_bills"] else None),
             "adjudication_fp_rate": (m["clean_flagged"] / m["clean_bills"]
                                      if m["clean_bills"] else None),
+            # flags on clean bills where the MODEL misread — correct
+            # behavior, counted separately, not as FP
+            "caught_model_error": m["caught_model_error"],
             "by_defect": {k: (v["flagged"] / v["n"] if v["n"] else 0)
                           for k, v in m["by_defect"].items()},
         }
@@ -275,8 +324,8 @@ def render_report(summary: dict, results: list) -> str:
                  "below is measured, not asserted.")
     lines.append("")
     lines.append("| model | bills | extraction ✓ | median s | item P | item R "
-                 "| total acc | adj. recall | adj. recall (any) | adj. FP |")
-    lines.append("|---|---|---|---|---|---|---|---|---|---|")
+                 "| total acc | adj. recall | adj. recall (any) | adj. FP | caught model err |")
+    lines.append("|---|---|---|---|---|---|---|---|---|---|---|")
     for model, s in summary.items():
         med = f"{s['median_seconds']:.1f}" if s["median_seconds"] else "—"
         ar = f"{s['adjudication_recall']:.0%}" if s["adjudication_recall"] is not None else "—"
@@ -285,7 +334,8 @@ def render_report(summary: dict, results: list) -> str:
         lines.append(
             f"| {model} | {s['bills']} | {s['extraction_success']:.0%} "
             f"| {med} | {s['item_precision']:.0%} | {s['item_recall']:.0%} "
-            f"| {s['stated_total_accuracy']:.0%} | {ar} | {ara} | {fp} |")
+            f"| {s['stated_total_accuracy']:.0%} | {ar} | {ara} | {fp} "
+            f"| {s['caught_model_error']} |")
     lines.append("")
     lines.append("## Adjudicator recall by defect class")
     lines.append("")
@@ -313,8 +363,13 @@ def render_report(summary: dict, results: list) -> str:
                  "reported as INFO on purpose — crying wolf on ten paise "
                  "is bad adjudicator behaviour — so the two columns differ "
                  "by exactly the paise-class defects.")
-    lines.append("- **adj. FP** — of clean bills, the fraction falsely flagged "
-                 "(lower is better; a high value means the adjudicator cries wolf)")
+    lines.append("- **adj. FP** — of clean bills the MODEL READ FAITHFULLY, the "
+                 "fraction falsely flagged. Flags on clean bills the model "
+                 "MISREAD are not FPs — they are correct behavior, counted "
+                 "separately as 'caught model err'.")
+    lines.append("- **caught model err** — clean bills where the model itself "
+                 "misread the printout and the adjudicator correctly flagged "
+                 "the resulting disagreement")
     return "\n".join(lines)
 
 

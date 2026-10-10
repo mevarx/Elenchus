@@ -13,7 +13,8 @@ dependencies = []
 
 [project.optional-dependencies]
 server = ["fastapi>=0.110", "uvicorn>=0.29", "python-multipart>=0.0.9"]
-dev = ["pytest>=8", "fastapi>=0.110", "uvicorn>=0.29", "python-multipart>=0.0.9", "httpx>=0.27"]
+multilingual = ["uharfbuzz>=0.38", "freetype-py>=2.4"]
+dev = ["pytest>=8", "fastapi>=0.110", "uvicorn>=0.29", "python-multipart>=0.0.9", "httpx>=0.27", "uharfbuzz>=0.38", "freetype-py>=2.4"]
 
 [project.scripts]
 elenchus = "elenchus.cli:main"

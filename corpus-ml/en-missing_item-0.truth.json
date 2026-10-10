@@ -1,0 +1,21 @@
+{
+  "line_items": [
+    {
+      "description": "Energy Charges",
+      "amount_inr": 1690.0,
+      "is_charge": true
+    },
+    {
+      "description": "Fixed Charge",
+      "amount_inr": 95.0,
+      "is_charge": true
+    }
+  ],
+  "stated_total_inr": 2070.6,
+  "true_total_inr": 2070.6,
+  "defect": "MISSING_ITEM",
+  "language": "en",
+  "notes": [
+    "line item 'Electricity Duty (16%)' (\u20b9285.6) omitted from print; stated total still includes it"
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "line_items": [
+    {
+      "description": "Energy Charges",
+      "amount_inr": 2215.2,
+      "is_charge": true
+    },
+    {
+      "description": "Fixed Charge",
+      "amount_inr": 110.0,
+      "is_charge": true
+    },
+    {
+      "description": "Electricity Duty (16%)",
+      "amount_inr": 232.52,
+      "is_charge": true
+    }
+  ],
+  "stated_total_inr": 2557.72,
+  "true_total_inr": 2697.23,
+  "defect": "WRONG_TAX",
+  "language": "en",
+  "notes": [
+    "duty labelled 16% but computed at 10%"
+  ]
+}

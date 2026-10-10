@@ -1,0 +1,10 @@
+{
+  "line_items": [],
+  "stated_total_inr": 2058.36,
+  "true_total_inr": 2058.36,
+  "defect": "EMPTY_WITH_TOTAL",
+  "language": "hi",
+  "notes": [
+    "zero line items printed with a confident stated total"
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "line_items": [
+    {
+      "description": "\u090a\u0930\u094d\u091c\u093e \u0936\u0941\u0932\u094d\u0915",
+      "amount_inr": 1690.0,
+      "is_charge": true
+    },
+    {
+      "description": "\u0938\u094d\u0925\u093f\u0930 \u0936\u0941\u0932\u094d\u0915",
+      "amount_inr": 128.0,
+      "is_charge": true
+    },
+    {
+      "description": "\u0935\u0940\u091c \u0915\u0930 (16%)",
+      "amount_inr": 290.88,
+      "is_charge": true
+    }
+  ],
+  "stated_total_inr": 2108.88,
+  "true_total_inr": 2108.88,
+  "defect": "NONE",
+  "language": "mr",
+  "notes": []
+}
