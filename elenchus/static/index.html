@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Elenchus — the cross-examination</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="wrap">
+
+  <h1><span class="greek">Elenchus</span> — the cross-examination</h1>
+  <p class="sub">
+    A local model reads your bill. <b>Plain Python checks whether its own
+    numbers add up.</b> Usually they don't — and the disagreement is the
+    report. Everything runs on this machine; nothing is uploaded anywhere.
+  </p>
+
+  <div class="panel">
+    <div id="drop">
+      <b>Drop a bill photo here</b>
+      <span class="hint">or click to choose — PNG / JPG / WebP</span>
+    </div>
+    <input type="file" id="file" accept="image/*" hidden>
+    <div class="actions">
+      <button class="primary" id="audit">Audit this bill</button>
+      <button id="demo">Run offline demo (cached fixtures)</button>
+    </div>
+    <div id="status"></div>
+  </div>
+
+  <div id="results"></div>
+
+  <footer>
+    Elenchus — constrained decoding buys syntax, never arithmetic.
+    Detection is deterministic stdlib; the model only proposes.
+  </footer>
+</div>
+
+<script>
+const drop = document.getElementById('drop');
+const fileInput = document.getElementById('file');
+const statusEl = document.getElementById('status');
+const resultsEl = document.getElementById('results');
+let currentFile = null;
+
+drop.addEventListener('click', () => fileInput.click());
+drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('drag'); });
+drop.addEventListener('dragleave', () => drop.classList.remove('drag'));
+drop.addEventListener('drop', e => {
+  e.preventDefault(); drop.classList.remove('drag');
+  if (e.dataTransfer.files.length) setFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', () => {
+  if (fileInput.files.length) setFile(fileInput.files[0]);
+});
+
+function setFile(f) {
+  currentFile = f;
+  drop.querySelector('b').textContent = f.name;
+  drop.querySelector('.hint').textContent =
+    (f.size / 1024).toFixed(0) + ' KB — ready to audit';
+}
+
+function setStatus(msg, isErr) {
+  statusEl.className = isErr ? 'err' : '';
+  statusEl.innerHTML = msg;
+}
+
+document.getElementById('audit').addEventListener('click', audit);
+document.getElementById('demo').addEventListener('click', runDemo);
+
+async function audit() {
+  if (!currentFile) { setStatus('choose a bill first', true); return; }
+  setStatus('<span class="spinner"></span>gemma3:4b is reading your bill… (5–15s)');
+  const fd = new FormData();
+  fd.append('file', currentFile);
+  try {
+    const r = await fetch('/api/audit', { method: 'POST', body: fd });
+    const d = await r.json();
+    if (!r.ok) { setStatus(d.error || 'audit failed', true); return; }
+    setStatus('');
+    renderOne(d);
+  } catch (e) {
+    setStatus('request failed: ' + e.message, true);
+  }
+}
+
+async function runDemo() {
+  setStatus('<span class="spinner"></span>replaying cached fixtures…');
+  try {
+    const r = await fetch('/api/demo');
+    const d = await r.json();
+    setStatus(d.results.length + ' fixture(s) replayed — no model call, no network');
+    renderMany(d.results);
+  } catch (e) {
+    setStatus('demo failed: ' + e.message, true);
+  }
+}
+
+function fmt(n) {
+  if (n === null || n === undefined) return '—';
+  return '₹' + Number(n).toLocaleString('en-IN', {minimumFractionDigits: 2});
+}
+function signed(n) {
+  if (n === null || n === undefined) return '—';
+  return (n >= 0 ? '+' : '−') + '₹' + Math.abs(Number(n)).toLocaleString('en-IN', {minimumFractionDigits: 2});
+}
+
+function renderOne(d) { renderMany([d]); }
+
+function renderMany(results) {
+  resultsEl.innerHTML = '';
+  for (const r of results) {
+    const v = r.verdict;
+    const cls = v.reconciled ? 'reconciled' : 'mismatch';
+    const tag = v.reconciled ? 'RECONCILED' : 'MISMATCH — EXECUTED NUMBERS DO NOT ADD UP';
+
+    const html = `
+      <div class="banner ${cls}">
+        ${r.label ? `<div class="label">${esc(r.label)}</div>` : ''}
+        <span class="tag">${tag}</span>
+        <div class="summary">${esc(v.summary)}</div>
+      </div>
+
+      <div class="numbers">
+        <div class="num stated">
+          <div class="k">model stated total</div>
+          <div class="v">${fmt(v.stated_total)}</div>
+          <div class="note">what the model claims the bill says</div>
+        </div>
+        <div class="num blind">
+          <div class="k">blind-trust sum</div>
+          <div class="v">${fmt(v.naive_total)}</div>
+          <div class="note">summing the model's JSON without checking${v.naive_delta !== null && Math.abs(v.naive_delta) > 0.005 ? ' — <b style="color:var(--crit)">' + signed(v.naive_delta) + ' off</b>' : ''}</div>
+        </div>
+        <div class="num adjudicated">
+          <div class="k">adjudicated total</div>
+          <div class="v">${fmt(v.computed_total)}</div>
+          <div class="note">charge rows only — the repair${v.delta !== null && Math.abs(v.delta) > 0.005 ? ' (Δ ' + signed(v.delta) + ')' : ''}</div>
+        </div>
+      </div>
+
+      ${v.findings.length ? v.findings.map(f => `
+        <div class="finding ${f.severity}">
+          <div class="code">${esc(f.code)}<span class="sev">${f.severity.toUpperCase()}</span></div>
+          <div class="detail">${esc(f.detail)}</div>
+        </div>`).join('') : '<div class="finding info"><div class="detail">No findings — the model\'s numbers reconcile.</div></div>'}
+
+      <details>
+        <summary>raw extraction JSON (what the model actually emitted)</summary>
+        <pre>${highlight(JSON.stringify(r.extraction, null, 2))}</pre>
+      </details>
+    `;
+    const div = document.createElement('div');
+    div.className = 'panel';
+    div.innerHTML = html;
+    resultsEl.appendChild(div);
+  }
+}
+
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g,
+    c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function highlight(json) {
+  return esc(json).replace(
+    /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g,
+    m => {
+      let cls = 'jn';
+      if (/^"/.test(m)) cls = /:$/.test(m) ? 'jk' : 'js';
+      else if (/true|false/.test(m)) cls = 'jk';
+      return `<span class="${cls}">${m}</span>`;
+    });
+}
+</script>
+</body>
+</html>

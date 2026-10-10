@@ -84,17 +84,29 @@ and produces identical output every time.
 ## Usage
 
 ```bash
-pip install -e .
+pip install -e ".[server]"
 
-# the full demo — fully offline, cached fixtures
-python -m elenchus demo
+# the web UI — one process serves the page and the API
+python -m uvicorn elenchus.app:app          # then open http://127.0.0.1:8000
 
-# audit a live bill (caches the extraction beside the fixture)
-python -m elenchus audit fixtures/bill.png
-
-# replay only — no model call
-python -m elenchus audit fixtures/bill.png --replay
+# the CLI
+python -m elenchus demo                     # offline replay of cached fixtures
+python -m elenchus audit fixtures/bill.png  # live extraction (cached beside the bill)
 ```
+
+The web UI at `/` shows, for any bill: the model's stated total, the
+blind-trust sum (what you get by trusting the JSON), and the adjudicated
+total (charge rows only) — side by side, with every finding and the raw
+extraction JSON beneath. The "Run offline demo" button replays all cached
+fixtures with no model call and no network.
+
+## API
+
+| Endpoint | What it does |
+|---|---|
+| `GET /` | the single-page UI |
+| `POST /api/audit` | multipart upload → extraction + adjudication JSON |
+| `GET /api/demo` | replay every cached fixture (instant, offline) |
 
 ## Test suite
 
