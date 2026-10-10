@@ -1,0 +1,148 @@
+{
+  "cells": [
+    {
+      "model": "gemma3:4b",
+      "image": "en-none-0.png",
+      "level": "clean",
+      "stated_total": 1363.29,
+      "n_items": 3,
+      "total_amount": 1363.29,
+      "behavior": "READ"
+    },
+    {
+      "model": "gemma3:4b",
+      "image": "en-none-0.png",
+      "level": "blur-1",
+      "stated_total": 1363.29,
+      "n_items": 3,
+      "total_amount": 1363.29,
+      "behavior": "READ"
+    },
+    {
+      "model": "gemma3:4b",
+      "image": "en-none-0.png",
+      "level": "blur-3",
+      "stated_total": 2378.1,
+      "n_items": 3,
+      "total_amount": 2278.09,
+      "behavior": "FABRICATE"
+    },
+    {
+      "model": "gemma3:4b",
+      "image": "en-none-0.png",
+      "level": "blur-6",
+      "stated_total": 3200.0,
+      "n_items": 6,
+      "total_amount": 6400.0,
+      "behavior": "FABRICATE"
+    },
+    {
+      "model": "gemma3:4b",
+      "image": "en-none-0.png",
+      "level": "crop-30pct",
+      "stated_total": 1363.29,
+      "n_items": 3,
+      "total_amount": 1363.29,
+      "behavior": "READ"
+    },
+    {
+      "model": "gemma3:4b",
+      "image": "en-none-0.png",
+      "level": "rotate-8deg",
+      "stated_total": 1363.29,
+      "n_items": 3,
+      "total_amount": 1363.29,
+      "behavior": "READ"
+    },
+    {
+      "model": "gemma3:4b",
+      "image": "en-none-0.png",
+      "level": "lowcontrast-0.3",
+      "stated_total": 1363.29,
+      "n_items": 3,
+      "total_amount": 2091.29,
+      "behavior": "READ"
+    },
+    {
+      "model": "gemma3:4b",
+      "image": "en-none-0.png",
+      "level": "jpeg-10",
+      "stated_total": 1363.29,
+      "n_items": 3,
+      "total_amount": 1363.29,
+      "behavior": "READ"
+    },
+    {
+      "model": "gemma3:4b",
+      "image": "en-misadded_total-0.png",
+      "level": "clean",
+      "stated_total": 3124.1,
+      "n_items": 3,
+      "total_amount": 3074.0,
+      "behavior": "READ"
+    },
+    {
+      "model": "gemma3:4b",
+      "image": "en-misadded_total-0.png",
+      "level": "blur-1",
+      "stated_total": 3124.1,
+      "n_items": 3,
+      "total_amount": 3074.0,
+      "behavior": "READ"
+    },
+    {
+      "model": "gemma3:4b",
+      "image": "en-misadded_total-0.png",
+      "level": "blur-3",
+      "stated_total": 3124.0,
+      "n_items": 3,
+      "total_amount": 2674.0,
+      "behavior": "FABRICATE"
+    },
+    {
+      "model": "gemma3:4b",
+      "image": "en-misadded_total-0.png",
+      "level": "blur-6",
+      "stated_total": 638.0,
+      "n_items": 1,
+      "total_amount": 638.0,
+      "behavior": "FABRICATE"
+    },
+    {
+      "model": "gemma3:4b",
+      "image": "en-misadded_total-0.png",
+      "level": "crop-30pct",
+      "stated_total": 3124.1,
+      "n_items": 3,
+      "total_amount": 3074.0,
+      "behavior": "READ"
+    },
+    {
+      "model": "gemma3:4b",
+      "image": "en-misadded_total-0.png",
+      "level": "rotate-8deg",
+      "stated_total": 3124.1,
+      "n_items": 3,
+      "total_amount": 3074.0,
+      "behavior": "READ"
+    },
+    {
+      "model": "gemma3:4b",
+      "image": "en-misadded_total-0.png",
+      "level": "lowcontrast-0.3",
+      "stated_total": 3124.1,
+      "n_items": 3,
+      "total_amount": 3074.0,
+      "behavior": "READ"
+    },
+    {
+      "model": "gemma3:4b",
+      "image": "en-misadded_total-0.png",
+      "level": "jpeg-10",
+      "stated_total": 3124.1,
+      "n_items": 3,
+      "total_amount": 3074.0,
+      "behavior": "READ"
+    }
+  ]
+}

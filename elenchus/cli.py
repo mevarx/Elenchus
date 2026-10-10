@@ -83,10 +83,45 @@ def main(argv=None) -> int:
 
     sub.add_parser("demo", help="run the full offline demo")
 
+    cp = sub.add_parser("compare", help="cross-model disagreement: two local "
+                                        "models read the same bill")
+    cp.add_argument("paths", nargs="+", help="bill image(s)")
+    cp.add_argument("--a", default="gemma3:4b")
+    cp.add_argument("--b", default="qwen2.5vl:3b")
+
+    ev = sub.add_parser("evaluate", help="measure extraction + adjudication "
+                                         "against planted ground truth")
+    ev.add_argument("--models", default="gemma3:4b",
+                    help="comma-separated ollama model names")
+    ev.add_argument("--per-cell", type=int, default=3)
+    ev.add_argument("--languages", default="en")
+    ev.add_argument("--corpus", default="corpus")
+    ev.add_argument("--out", default="EVALUATION.md")
+
+    cal = sub.add_parser("calibrate", help="measure abstention vs "
+                                           "fabrication under degradation")
+    cal.add_argument("paths", nargs="+")
+    cal.add_argument("--model", default="gemma3:4b")
+
     args = ap.parse_args(argv)
 
     if args.cmd == "demo":
         return _demo()
+
+    if args.cmd == "compare":
+        from .compare import main as compare_main
+        return compare_main(["--a", args.a, "--b", args.b] + args.paths)
+
+    if args.cmd == "calibrate":
+        from .calibrate import main as calibrate_main
+        return calibrate_main(["--model", args.model] + args.paths)
+
+    if args.cmd == "evaluate":
+        from .evaluate import run_evaluation
+        models = [m.strip() for m in args.models.split(",") if m.strip()]
+        langs = tuple(l.strip() for l in args.languages.split(",") if l.strip())
+        run_evaluation(models, args.corpus, args.per_cell, langs, args.out)
+        return 0
     return _audit_one(args.path, args.replay)
 
 

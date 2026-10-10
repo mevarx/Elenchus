@@ -1,0 +1,13 @@
+{
+  "line_items": [
+    {
+      "description": "Fixed Charge",
+      "amount_inr": 95.0
+    },
+    {
+      "description": "Electricity Duty (16%)",
+      "amount_inr": 369.63
+    }
+  ],
+  "stated_total_inr": 2679.83
+}

@@ -1,0 +1,24 @@
+{
+  "line_items": [
+    {
+      "description": "Energy Charges",
+      "amount_inr": 1080.25,
+      "is_charge": true
+    },
+    {
+      "description": "Fixed Charge",
+      "amount_inr": 95.0,
+      "is_charge": true
+    },
+    {
+      "description": "Electricity Duty (16%)",
+      "amount_inr": 188.04,
+      "is_charge": true
+    }
+  ],
+  "stated_total_inr": 1363.29,
+  "true_total_inr": 1363.29,
+  "defect": "NONE",
+  "language": "en",
+  "notes": []
+}

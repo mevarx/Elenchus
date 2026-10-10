@@ -22,6 +22,26 @@ METADATA_MARKERS = (
     "gstin", "email", "meter", "tariff",
 )
 
+# A line item whose DESCRIPTION is (almost entirely) numeric is a metadata
+# VALUE scraped as a charge. Measured: on a bill with zero printed line
+# items, gemma3:4b fabricated one row — description "260" (the units
+# consumed) with the total attached. Real charge rows are text.
+import re as _re
+
+
+def _is_numeric_description(description: str) -> bool:
+    d = description.strip()
+    if not d:
+        return False
+    stripped = _re.sub(r"[\s,₹.%/-]", "", d)
+    return bool(stripped) and stripped.replace(".", "", 1).isdigit()
+
+
+def _parse_pct(description: str) -> float | None:
+    """Extract a percentage from a line label like 'Electricity Duty (16%)'."""
+    m = _re.search(r"\(?\s*(\d+(?:\.\d+)?)\s*%\s*\)?", description)
+    return float(m.group(1)) if m else None
+
 # Repeating-decimal tolerance for paise-level rounding: 1 rupee buys
 # everything below it; beyond that a "rounding" excuse stops working.
 ROUNDING_TOLERANCE_INR = 1.00
@@ -82,7 +102,13 @@ def adjudicate(ext: Extraction) -> Verdict:
 
     # --- check 2: metadata contamination ----------------------------
     metadata_rows = [i for i in items if _is_metadata(i.description)]
-    real_rows = [i for i in items if not _is_metadata(i.description)]
+    # a fabricated charge: a purely numeric description (a metadata VALUE
+    # scraped as a charge row). Measured: gemma3:4b fabricated
+    # {description: "260", amount: <total>} on a zero-item bill.
+    fabricated_rows = [i for i in items if _is_numeric_description(i.description)]
+    real_rows = [i for i in items
+                 if not _is_metadata(i.description)
+                 and not _is_numeric_description(i.description)]
     if metadata_rows:
         findings.append(Finding(
             code="METADATA_AS_CHARGES",
@@ -94,6 +120,19 @@ def adjudicate(ext: Extraction) -> Verdict:
                                 for i in metadata_rows[:4])),
             numbers={"metadata_rows": len(metadata_rows),
                      "total_rows": len(items)}))
+
+    if fabricated_rows:
+        findings.append(Finding(
+            code="FABRICATED_CHARGE_ROW",
+            severity="critical",
+            detail=(f"{len(fabricated_rows)} 'charge' row(s) have a purely "
+                    f"numeric description — a metadata VALUE scraped into "
+                    f"the charge list, not a real billed item: "
+                    + "; ".join(f"'{i.description}' = ₹{i.amount_inr:g}"
+                                for i in fabricated_rows[:3])
+                    + ". Real charge rows are text; this is schema-pressure "
+                      "fabrication."),
+            numbers={"fabricated_rows": len(fabricated_rows)}))
 
     # --- check 3: arithmetic ----------------------------------------
     # Two sums, deliberately:
@@ -162,6 +201,37 @@ def adjudicate(ext: Extraction) -> Verdict:
             detail=("every extracted line item has amount 0 — the model "
                     "produced the SHAPE of a bill without its values"),
             numbers={"rows": len(items)}))
+
+    # --- check 5: printed percentage vs. arithmetic -------------------
+    # If a line item carries a percentage label (e.g. 'Electricity Duty
+    # (16%)'), recompute it against the other charge rows and flag the
+    # disagreement. This is the domain-rule layer: it catches WRONG_TAX,
+    # which pure sum-consistency cannot see (a bill can be internally
+    # consistent AND have the wrong tax rate).
+    if ext.stated_total_inr is not None and real_rows:
+        pct_rows = [(i, _parse_pct(i.description)) for i in real_rows]
+        pct_rows = [(i, p) for i, p in pct_rows if p is not None]
+        if len(pct_rows) == 1:
+            pct_item, pct = pct_rows[0]
+            others = [i for i in real_rows if i is not pct_item]
+            other_sum = round(sum(i.amount_inr for i in others), 2)
+            if other_sum > 0:
+                expected = round(other_sum * pct / 100.0, 2)
+                if abs(expected - pct_item.amount_inr) > max(1.0, other_sum * 0.01):
+                    findings.append(Finding(
+                        code="PERCENTAGE_MISMATCH",
+                        severity="critical",
+                        detail=(f"'{pct_item.description}' claims {pct:g}% but "
+                                f"₹{pct_item.amount_inr:,.2f} is not "
+                                f"{pct:g}% of the other charges "
+                                f"(₹{other_sum:,.2f} → ₹{expected:,.2f}). "
+                                f"The bill is internally consistent but the "
+                                f"printed rate does not match its own "
+                                f"arithmetic."),
+                        numbers={"printed_pct": pct,
+                                 "printed_amount": pct_item.amount_inr,
+                                 "expected_amount": expected,
+                                 "base": other_sum}))
 
     reconciled = (ext.stated_total_inr is not None
                   and not any(f.severity == "critical" for f in findings))

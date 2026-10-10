@@ -131,6 +131,44 @@ class TestFailureModes:
         assert "UNVERIFIABLE" in v.summary()
 
 
+class TestDomainRules:
+    def test_fabricated_charge_row_caught(self):
+        """Measured: on a zero-printed-item bill, gemma3:4b fabricated
+        {description: '260', amount: <total>} — a metadata VALUE scraped
+        as a charge. Purely numeric descriptions are the tell."""
+        e = ext([("260", 2268.96)], 2268.96)
+        v = adjudicate(e)
+        codes = [f.code for f in v.findings]
+        assert "FABRICATED_CHARGE_ROW" in codes
+        assert v.reconciled is False
+        assert v.critical_count >= 1
+
+    def test_percentage_mismatch_caught(self):
+        """WRONG_TAX, catchable version: label claims 16%, amount computed
+        at 10%. Internally consistent — only percentage recomputation sees it."""
+        e = ext([("Energy Charges", 1278.00), ("Fixed Charge", 110.00),
+                 ("Electricity Duty (16%)", 138.80)], 1526.80)
+        v = adjudicate(e)
+        codes = [f.code for f in v.findings]
+        assert "PERCENTAGE_MISMATCH" in codes
+        assert v.reconciled is False
+
+    def test_correct_percentage_not_flagged(self):
+        e = ext([("Energy Charges", 1278.00), ("Fixed Charge", 110.00),
+                 ("Electricity Duty (16%)", 222.08)], 1610.08)
+        v = adjudicate(e)
+        assert "PERCENTAGE_MISMATCH" not in [f.code for f in v.findings]
+        assert v.reconciled is True
+
+    def test_two_percentage_rows_abstains(self):
+        """Multiple percentage rows (e.g. hospital GST lines): the check
+        abstains rather than guessing the base. Abstention over false alarm."""
+        e = ext([("Consultation", 500.00), ("Pharmacy GST (5%)", 25.00),
+                 ("Room GST (12%)", 120.00)], 645.00)
+        v = adjudicate(e)
+        assert "PERCENTAGE_MISMATCH" not in [f.code for f in v.findings]
+
+
 class TestDeterminism:
     def test_same_input_same_output(self):
         e = ext([("A", 10.0), ("B", 20.0)], 35.0)

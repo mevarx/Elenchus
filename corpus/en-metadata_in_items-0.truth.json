@@ -1,0 +1,41 @@
+{
+  "line_items": [
+    {
+      "description": "Energy Charges",
+      "amount_inr": 1080.25,
+      "is_charge": true
+    },
+    {
+      "description": "Units Consumed",
+      "amount_inr": 145.0,
+      "is_charge": false
+    },
+    {
+      "description": "Rate Slab",
+      "amount_inr": 0.0,
+      "is_charge": false
+    },
+    {
+      "description": "Reading Date",
+      "amount_inr": 0.0,
+      "is_charge": false
+    },
+    {
+      "description": "Fixed Charge",
+      "amount_inr": 95.0,
+      "is_charge": true
+    },
+    {
+      "description": "Electricity Duty (16%)",
+      "amount_inr": 188.04,
+      "is_charge": true
+    }
+  ],
+  "stated_total_inr": 1363.29,
+  "true_total_inr": 1363.29,
+  "defect": "METADATA_IN_ITEMS",
+  "language": "en",
+  "notes": [
+    "3 metadata rows planted among the charge rows, one carrying the units value as its amount"
+  ]
+}
